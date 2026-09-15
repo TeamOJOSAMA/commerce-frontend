@@ -5,6 +5,9 @@ const CATEGORY_FOLDERS = {
   CLOTHING: '패션의류',
   ELECTRONICS: '가전_디지털',
   SPORTS: '스포츠_레저',
+  FURNITURE: '가구',
+  BEVERAGE: '음료',
+  BEAUTY: '뷰티',
   FOOD: '식품',
   OTHER: '기타',
 };
@@ -34,6 +37,24 @@ const IMAGE_FILES = {
     '올리브유.jpg', '잼.jpg', '전통 한과.jpg', '조미김.jpg', '참치캔.jpg',
     '파스타 소스.jpg', '파스타면.jpg', '한우.jpg', '현미밥.jpg', '훈제오리.jpg',
   ],
+  FURNITURE: [
+    '3단서랍장.jpg', '3인용 패브릭 소파.jpg', '4인용식탁세트.jpg', '5단 책장.jpg', 'LED화장대.jpg',
+    '극세사 러그.jpg', '데스크매트.jpg', '메모리폼 매트리스.jpg', '붙박이형 옷장.jpg', '빈백소파.jpg',
+    '사무용의자.jpg', '수납장.jpg', '스탠드 조명.jpg', '암막커튼.jpg', '원목책상.jpg',
+    '원목협탁.jpg', '전신거울.jpg', '침대 프레임.jpg', '파티션.jpg', '행거.jpg',
+  ],
+  BEVERAGE: [
+    '과일청베이스.jpg', '녹차티백.jpg', '두유세트.jpg', '드립백 커피 30입.jpg', '라떼베이스.jpg',
+    '보리차티백.jpg', '비타민워터.jpg', '스포츠음료세트.jpg', '아이스티.jpg', '유기농원두 1kg.jpg',
+    '이온음료.jpg', '인스턴트커피.jpg', '제로콜라.jpg', '캡슐커피세트.jpg', '코코넛워터.jpg',
+    '콜드브루 원액.jpg', '탄산수.jpg', '프로틴쉐이크.jpg', '핫초코믹스.jpg', '홍차티백세트.jpg',
+  ],
+  BEAUTY: [
+    '롱래스팅 마스카라.jpg', '마스크팩 10매.jpg', '매트립스틱.jpg', '무기자차선크림.jpg', '미니향수.jpg',
+    '바디로션.jpg', '수분크림.jpg', '스킨부스터앰플.jpg', '아이쉐도우.jpg', '약산성토너.jpg',
+    '자외선차단스틱.jpg', '젤 아이라이너.jpg', '촉촉립밤.jpg', '쿠션파운데이션.jpg', '클렌징오일.jpg',
+    '클렌징폼.jpg', '필링패드.jpg', '핸드크림세트.jpg', '헤어에센스.jpg', '히알루론산에센스.jpg',
+  ],
   OTHER: [
     '3단 우산.png', '거치대.png', '멀티탭.png', '미니가습기.png', '미니선풍기.png',
     '반지갑.png', '백팩.png', '보조가방.png', '복베개.png', '손목시계.png',
@@ -57,6 +78,8 @@ const NAME_OVERRIDES = {
   '캠핑랜턴': '캠핑용 랜턴',
   '케리어': '캐리어 20인치',
   '휴대용손전등': '무선 휴대용 조명',
+  '아이쉐도우': '아이섀도 팔레트',
+  '과일청베이스': '과일청 에이드베이스',
 };
 
 const normalize = (name) => name.replace(/\s+/g, '').toLowerCase();
@@ -77,18 +100,32 @@ function buildIndex() {
 
 // 상품명이 파일명(또는 그 오타 보정본)을 부분 문자열로 포함하면 그 이미지를 쓴다.
 // 예: 파일 "고속 충전기" -> 상품 "고속충전기 65W"에 포함되므로 매칭.
-export function getProductImageUrl(product) {
-  if (!product?.name || !product?.category) return null;
-
-  const folder = CATEGORY_FOLDERS[product.category];
+function findImageInCategory(category, productName) {
+  const folder = CATEGORY_FOLDERS[category];
   if (!folder) return null;
 
   indexByCategory ??= buildIndex();
-  const candidates = indexByCategory[product.category] ?? [];
-  const normalizedProductName = normalize(product.name);
+  const candidates = indexByCategory[category] ?? [];
+  const normalizedProductName = normalize(productName);
 
   const match = candidates.find((candidate) => normalizedProductName.includes(candidate.normalized));
   if (!match) return null;
 
   return `/products/${encodeURIComponent(folder)}/${encodeURIComponent(match.file)}`;
+}
+
+// 카테고리를 알면(상품 목록/상세) 그 카테고리에서만 찾고, 모르면(장바구니·주문 항목처럼
+// 상품명만 있는 곳) 이미지가 있는 카테고리를 전부 뒤져서 찾는다.
+export function getProductImageUrl(product) {
+  if (!product?.name) return null;
+
+  if (product.category) {
+    return findImageInCategory(product.category, product.name);
+  }
+
+  for (const category of Object.keys(CATEGORY_FOLDERS)) {
+    const url = findImageInCategory(category, product.name);
+    if (url) return url;
+  }
+  return null;
 }

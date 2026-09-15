@@ -4,6 +4,8 @@ import { getOrderPreview, createOrder } from '../api/orders';
 import { approvePayment } from '../api/payments';
 import { getMyCoupons } from '../api/coupons';
 import { useCartStore } from '../store/cartStore';
+import { getProductImageUrl } from '../constants/productImages';
+import ImagePlaceholder from '../components/common/ImagePlaceholder';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
 
@@ -82,12 +84,20 @@ export default function Checkout() {
           <h2 className="mb-3 font-bold">1. 주문 상품</h2>
           {preview.items.map((item) => {
             const hasEvent = item.discountRate != null;
+            const imageUrl = getProductImageUrl({ name: item.productName });
             return (
               <div
                 key={item.cartItemId}
                 className="mb-2 flex items-start gap-3 border-b pb-2 text-sm"
                 style={{ borderColor: 'var(--line)' }}
               >
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded" style={{ background: 'var(--paper-2)' }}>
+                  {imageUrl ? (
+                    <img src={imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                  ) : (
+                    <ImagePlaceholder className="h-full w-full" />
+                  )}
+                </div>
                 <span className="min-w-0 flex-1 break-words">{item.productName}</span>
                 <span className="w-16 shrink-0 text-center" style={{ color: 'var(--text-muted)' }}>
                   수량 {item.quantity}

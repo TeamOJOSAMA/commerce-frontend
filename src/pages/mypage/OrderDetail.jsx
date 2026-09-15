@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 import { DEMO_TOKEN, DEMO_ORDER_DETAILS } from '../../mocks/demoData';
 import { formatOrderStatus, formatOrderDate } from '../../constants/orderStatus';
 import ImagePlaceholder from '../../components/common/ImagePlaceholder';
+import { getProductImageUrl } from '../../constants/productImages';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
 
@@ -146,12 +147,13 @@ export default function OrderDetail() {
             const couponDiscountRate = hasCouponDiscount
               ? Math.round((item.couponDiscountShare / item.subTotal) * 100)
               : 0;
+            const imageUrl = item.imageUrl ?? getProductImageUrl({ name: item.productName });
 
             return (
               <div key={item.orderItemId} className="clay flex items-center gap-4 p-4">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded" style={{ background: 'var(--paper-2)' }}>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                  {imageUrl ? (
+                    <img src={imageUrl} alt={item.productName} className="h-full w-full object-cover" />
                   ) : (
                     <ImagePlaceholder className="h-full w-full" />
                   )}

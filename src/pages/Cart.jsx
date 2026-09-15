@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { DEMO_TOKEN, DEMO_CART } from '../mocks/demoData';
 import ImagePlaceholder from '../components/common/ImagePlaceholder';
+import { getProductImageUrl } from '../constants/productImages';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
 const SHIPPING_FEE = 0;
@@ -138,6 +139,7 @@ export default function Cart() {
             <div className="flex flex-col gap-3">
               {cart.items.map((item) => {
                 const hasEvent = item.eventPrice != null;
+                const imageUrl = getProductImageUrl({ name: item.productName });
                 return (
                   <div key={item.cartItemId} className="clay flex items-center gap-4 p-4">
                     <input
@@ -150,7 +152,11 @@ export default function Cart() {
                       className="block h-20 w-20 shrink-0 overflow-hidden rounded"
                       style={{ background: 'var(--paper-2)' }}
                     >
-                      <ImagePlaceholder className="h-full w-full" />
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={item.productName} className="h-full w-full object-cover" />
+                      ) : (
+                        <ImagePlaceholder className="h-full w-full" />
+                      )}
                     </Link>
                     <div className="min-w-0 flex-1">
                       <Link to={`/products/${item.productId}`} className="font-semibold hover:underline">
