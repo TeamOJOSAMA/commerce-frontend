@@ -6,5 +6,6 @@ export const getActiveCoupons = () => client.get('/coupons', { params: { couponS
 // 쿠폰을 내 계정으로 발급받는다. 로그인이 필요하다.
 export const issueCoupon = (couponId) => client.post(`/coupons/${couponId}/issue`); // -> UserCouponResponse
 
-// 내가 보유한 쿠폰 목록.
-export const getMyCoupons = () => client.get('/users/me/coupons'); // -> PageResponse<UserCouponResponse>
+// 내가 보유한 쿠폰 목록. status를 주면(예: 'AVAILABLE') 그 상태만 걸러서 받는다.
+export const getMyCoupons = (status) =>
+  client.get('/users/me/coupons', { params: status ? { status } : {} }); // -> PageResponse<UserCouponResponse>

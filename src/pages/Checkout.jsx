@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getOrderPreview, createOrder } from '../api/orders';
 import { approvePayment } from '../api/payments';
+import { getMyCoupons } from '../api/coupons';
 import { useCartStore } from '../store/cartStore';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
@@ -23,13 +24,23 @@ export default function Checkout() {
 
   const [preview, setPreview] = useState(null);
   const [userCouponId, setUserCouponId] = useState('');
+  const [myCoupons, setMyCoupons] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (cartItemIds.length === 0) return;
-    getOrderPreview(cartItemIds).then(setPreview);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    getOrderPreview(cartItemIds, userCouponId || null)
+      .then((data) => {
+        setPreview(data);
+        setError('');
+      })
+      .catch((err) => setError(err.message));
+  }, [cartItemIdsParam, userCouponId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    getMyCoupons('AVAILABLE').then((page) => setMyCoupons(page?.content ?? []));
+  }, []);
 
   const handlePay = async () => {
     setSubmitting(true);
@@ -103,13 +114,53 @@ export default function Checkout() {
           })}
 
           <h2 className="mt-6 mb-2 font-bold">2. 쿠폰 사용</h2>
-          {/* TODO: 보유 쿠폰 목록 API가 아직 없어서 ID를 직접 입력하는 임시 방식이다. */}
-          <input
-            value={userCouponId}
-            onChange={(event) => setUserCouponId(event.target.value)}
-            placeholder="보유 쿠폰 ID (쿠폰 목록 API 준비 중)"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-          />
+          {!myCoupons ? (
+            <div className="text-sm text-gray-400">불러오는 중...</div>
+          ) : myCoupons.length === 0 ? (
+            <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              사용 가능한 쿠폰이 없어요.{' '}
+              <Link to="/coupons" className="underline hover:text-black">
+                한정쿠폰 받으러 가기
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="userCoupon"
+                  checked={userCouponId === ''}
+                  onChange={() => setUserCouponId('')}
+                />
+                쿠폰 사용 안 함
+              </label>
+              {myCoupons.map((coupon) => {
+                const notEligible = preview && preview.couponEligibleAmount < coupon.minimumOrderAmount;
+                return (
+                  <label
+                    key={coupon.userCouponId}
+                    className="flex items-center gap-2 text-sm"
+                    style={{ opacity: notEligible ? 0.4 : 1 }}
+                  >
+                    <input
+                      type="radio"
+                      name="userCoupon"
+                      checked={userCouponId === String(coupon.userCouponId)}
+                      disabled={notEligible}
+                      onChange={() => setUserCouponId(String(coupon.userCouponId))}
+                    />
+                    <span className="font-bold" style={{ color: 'var(--red)' }}>
+                      {coupon.discountRate}%
+                    </span>
+                    {coupon.couponName}
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      ({formatPrice(coupon.minimumOrderAmount)} 이상 · 최대 {formatPrice(coupon.maximumDiscountAmount)} 할인)
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="clay h-fit p-7">

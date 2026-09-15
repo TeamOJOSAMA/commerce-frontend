@@ -1,7 +1,9 @@
 import client from './client';
 
-export const getOrderPreview = (cartItemIds = []) =>
-  client.get('/orders/preview', { params: { cartItemIds } }); // -> OrderPreviewResponse
+export const getOrderPreview = (cartItemIds = [], userCouponId = null) =>
+  client.get('/orders/preview', {
+    params: { cartItemIds, ...(userCouponId ? { userCouponId } : {}) },
+  }); // -> OrderPreviewResponse
 
 // request: { cartItemIds, userCouponId }
 export const createOrder = (request) =>
