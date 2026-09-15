@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* 다크 헤더 + 크림 배경 + 레드/블루 포인트의 플랫한 커머스 디자인 시스템 */
+:root {
+  --ink: #111111;
+  --paper: #f6f4ef;
+  --paper-2: #edeae1;
+  --line: #dedace;
+  --text-dark: #1b1a17;
+  --text-muted: #7a776e;
+  --red: #ff3b30;
+  --blue: #1c4fd6;
+}
+
+body {
+  margin: 0;
+  color: var(--text-dark);
+  background: var(--paper);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+  /* 풀블리드 섹션(w-screen)이 스크롤바 폭만큼 살짝 넘치는 것을 가로 스크롤 없이 정리한다 */
+  overflow-x: hidden;
+}
+
+/* components 레이어에 두어 유틸리티 클래스(hover:border-black 등)가 항상 우선하도록 한다 */
+@layer components {
+  .wrap {
+    max-width: 1240px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  /* 상품카드·주문요약 등 공용 카드 — 흰 배경 + 얇은 테두리의 플랫한 스타일 */
+  .clay {
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+  }
+
+  /* 포인트 액션(구매, 주문 등)에 쓰는 레드 버튼 */
+  .clay-accent {
+    background: var(--red);
+    color: #fff;
+    border-radius: 999px;
+    border: none;
+    transition: background-color 0.15s ease;
+  }
+
+  .clay-accent:hover {
+    background: #e8322a;
+  }
+}
