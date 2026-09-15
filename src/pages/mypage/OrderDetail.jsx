@@ -206,7 +206,7 @@ export default function OrderDetail() {
         <div className="clay h-fit p-6">
           <h2 className="mb-4 text-lg font-bold">결제 정보</h2>
           <div
-            className="mb-4 flex items-baseline justify-between border-b pb-4 text-xl font-bold"
+            className="mb-4 flex items-baseline justify-between border-b pb-4 text-lg font-bold"
             style={{ borderColor: 'var(--line)' }}
           >
             <span className="text-base font-normal">총 결제 금액</span>
