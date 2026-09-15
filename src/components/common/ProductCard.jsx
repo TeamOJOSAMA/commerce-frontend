@@ -1,16 +1,18 @@
 import { Link } from 'react-router-dom';
 import ImagePlaceholder from './ImagePlaceholder';
+import { getProductImageUrl } from '../../constants/productImages';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
 
 export default function ProductCard({ product }) {
   const hasEvent = product.eventPrice != null;
+  const imageUrl = product.imageUrl ?? getProductImageUrl(product);
 
   return (
     <Link to={`/products/${product.id}`} className="clay block overflow-hidden hover:border-black">
       <div className="relative aspect-square w-full">
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+        {imageUrl ? (
+          <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           <ImagePlaceholder className="h-full w-full" />
         )}

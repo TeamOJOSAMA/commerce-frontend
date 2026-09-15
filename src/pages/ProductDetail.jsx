@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import { DEMO_TOKEN } from '../mocks/demoData';
 import ImagePlaceholder from '../components/common/ImagePlaceholder';
+import { getProductImageUrl } from '../constants/productImages';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
 
@@ -59,11 +60,12 @@ export default function ProductDetail() {
   }
 
   const hasEvent = product.eventPrice != null;
+  const imageUrl = product.imageUrl ?? getProductImageUrl(product);
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
-      {product.imageUrl ? (
-        <img src={product.imageUrl} alt={product.name} className="clay aspect-square w-full object-cover" />
+      {imageUrl ? (
+        <img src={imageUrl} alt={product.name} className="clay aspect-square w-full object-cover" />
       ) : (
         <ImagePlaceholder className="clay aspect-square w-full" />
       )}
