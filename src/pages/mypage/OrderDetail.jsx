@@ -226,7 +226,7 @@ export default function OrderDetail() {
             </button>
           )}
 
-          {order.displayStatus === 'PAID' && !showRefundForm && (
+          {(order.displayStatus === 'PAID' || order.displayStatus === 'PARTIALLY_REFUNDED') && !showRefundForm && (
             <button
               onClick={() => setShowRefundForm(true)}
               className="w-full rounded border py-2.5 text-sm hover:border-black"
@@ -266,6 +266,10 @@ export default function OrderDetail() {
           {refundType === 'PARTIAL' && (
             <div className="mb-3 flex flex-col gap-2">
               {order.items.map((item) => {
+                // 이미 앞서 환불(요청+완료 불문)된 수량은 빼고, 남은 만큼만 다시 환불 요청할 수 있다.
+                const remaining = item.quantity - (item.refundedQuantity ?? 0);
+                if (remaining <= 0) return null;
+
                 const selectedQuantity = refundSelections[item.orderItemId];
                 const isSelected = selectedQuantity !== undefined;
                 return (
@@ -274,18 +278,18 @@ export default function OrderDetail() {
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleRefundItem(item.orderItemId, item.quantity)}
+                        onChange={() => toggleRefundItem(item.orderItemId, remaining)}
                       />
-                      {item.productName} (최대 {item.quantity}개)
+                      {item.productName} (환불 가능 {remaining}개)
                     </label>
                     {isSelected && (
                       <input
                         type="number"
                         min={1}
-                        max={item.quantity}
+                        max={remaining}
                         value={selectedQuantity}
                         onChange={(event) =>
-                          updateRefundQuantity(item.orderItemId, Number(event.target.value), item.quantity)
+                          updateRefundQuantity(item.orderItemId, Number(event.target.value), remaining)
                         }
                         className="w-16 rounded border px-2 py-1 text-center text-sm"
                         style={{ borderColor: 'var(--line)' }}
