@@ -218,7 +218,7 @@ export default function Cart() {
               <span>{formatPrice(SHIPPING_FEE)}</span>
             </div>
             <div
-              className="mb-5 flex items-baseline justify-between border-t pt-4 text-2xl font-bold"
+              className="mb-5 flex items-baseline justify-between border-t pt-4 text-xl font-bold"
               style={{ borderColor: 'var(--line)' }}
             >
               <span className="text-base font-normal">총 결제 금액</span>

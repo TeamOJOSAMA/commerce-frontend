@@ -75,13 +75,13 @@ export default function ProductDetail() {
         {hasEvent ? (
           <div className="mb-3">
             <div className="text-gray-400 line-through">{formatPrice(product.price)}</div>
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               {formatPrice(product.eventPrice)}{' '}
               <span className="text-red-500">{product.discountRate}%</span>
             </div>
           </div>
         ) : (
-          <div className="mb-3 text-2xl font-bold">{formatPrice(product.price)}</div>
+          <div className="mb-3 text-xl font-bold">{formatPrice(product.price)}</div>
         )}
 
         <div className="mb-4 text-sm text-gray-500">재고 {product.stock}개 · 상태 {product.status}</div>
