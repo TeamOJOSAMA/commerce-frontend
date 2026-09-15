@@ -162,6 +162,13 @@ export default function OrderDetail() {
                   <div className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
                     수량 {item.quantity}
                   </div>
+                  {item.refundedQuantity > 0 && (
+                    <div className="mt-0.5 text-xs font-semibold" style={{ color: 'var(--red)' }}>
+                      {item.refundedQuantity}개 환불됨
+                      {item.refundedQuantity < item.quantity &&
+                        ` · 남은 수량 ${item.quantity - item.refundedQuantity}개`}
+                    </div>
+                  )}
                 </div>
 
                 <div className="shrink-0 text-right">
