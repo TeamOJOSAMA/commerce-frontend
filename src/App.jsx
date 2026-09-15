@@ -12,6 +12,7 @@ import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Chat from './pages/Chat';
+import Coupons from './pages/Coupons';
 import InfoPage from './pages/InfoPage';
 
 import MyPage from './pages/mypage/MyPage';
@@ -40,6 +41,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/coupons" element={<Coupons />} />
           <Route path="/info/:type" element={<InfoPage />} />
 
           <Route element={<ProtectedRoute />}>

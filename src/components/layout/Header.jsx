@@ -119,5 +119,5 @@ const NAV_LINKS = [
     to: `/products?category=${category.value}`,
   })),
   { label: '타임세일', to: '/products?status=ON_EVENT' },
-  { label: '한정쿠폰', to: '/mypage#coupons', highlight: true },
+  { label: '한정쿠폰', to: '/coupons', highlight: true },
 ];

@@ -179,6 +179,21 @@ export const DEMO_CHAT_ROOMS = [
   },
 ];
 
+// 마이페이지 "내 쿠폰"에 쓰이는 보유 쿠폰 더미 데이터. 백엔드 UserCouponResponse 모양을 따라간다.
+export const DEMO_MY_COUPONS = [
+  { userCouponId: 1, couponId: 1, couponName: '가을 시즌 할인쿠폰', discountRate: 15, minimumOrderAmount: 50000, maximumDiscountAmount: 10000, status: 'AVAILABLE', expiresAt: '2026-09-28T23:59:59' },
+  { userCouponId: 2, couponId: 2, couponName: '신규 회원 환영 쿠폰', discountRate: 10, minimumOrderAmount: 30000, maximumDiscountAmount: 5000, status: 'AVAILABLE', expiresAt: '2026-09-20T23:59:59' },
+  { userCouponId: 3, couponId: 3, couponName: '여름 세일 쿠폰', discountRate: 20, minimumOrderAmount: 40000, maximumDiscountAmount: 8000, status: 'USED', expiresAt: '2026-08-30T23:59:59' },
+  { userCouponId: 4, couponId: 4, couponName: '봄맞이 할인쿠폰', discountRate: 10, minimumOrderAmount: 20000, maximumDiscountAmount: 3000, status: 'EXPIRED', expiresAt: '2026-06-01T23:59:59' },
+];
+
+// 한정쿠폰(발급 가능 쿠폰) 페이지에 쓰이는 더미 데이터. 백엔드 CouponResponse 모양을 따라간다.
+export const DEMO_ACTIVE_COUPONS = [
+  { couponId: 10, couponName: '추석맞이 특가 쿠폰', discountRate: 25, minimumOrderAmount: 30000, maximumDiscountAmount: 15000, totalQuantity: 100, issuedQuantity: 87, status: 'ACTIVE', issueEndsAt: '2026-09-30T23:59:59' },
+  { couponId: 11, couponName: '전상품 5% 쿠폰', discountRate: 5, minimumOrderAmount: 10000, maximumDiscountAmount: 5000, totalQuantity: 500, issuedQuantity: 120, status: 'ACTIVE', issueEndsAt: '2026-10-15T23:59:59' },
+  { couponId: 12, couponName: '마감임박 한정 쿠폰', discountRate: 30, minimumOrderAmount: 50000, maximumDiscountAmount: 20000, totalQuantity: 50, issuedQuantity: 50, status: 'ACTIVE', issueEndsAt: '2026-09-18T23:59:59' },
+];
+
 export const DEMO_CHAT_AUTO_REPLIES = [
   '네, 확인해보겠습니다!',
   '조금만 기다려주세요 :)',
