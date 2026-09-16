@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import MainLayout from './components/layout/MainLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AdminRoute from './components/common/AdminRoute';
 
 import Home from './pages/Home';
 import ProductList from './pages/ProductList';
@@ -18,6 +19,9 @@ import InfoPage from './pages/InfoPage';
 import MyPage from './pages/mypage/MyPage';
 import OrdersPage from './pages/mypage/OrdersPage';
 import OrderDetail from './pages/mypage/OrderDetail';
+
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminChatRooms from './pages/admin/AdminChatRooms';
 
 import { useAuthStore } from './store/authStore';
 import { useCartStore } from './store/cartStore';
@@ -51,6 +55,11 @@ function App() {
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/mypage/orders" element={<OrdersPage />} />
             <Route path="/mypage/orders/:orderId" element={<OrderDetail />} />
+          </Route>
+
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/chat-rooms" element={<AdminChatRooms />} />
           </Route>
         </Route>
       </Routes>

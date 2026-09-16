@@ -7,6 +7,7 @@ import { CATEGORIES } from '../../constants/categories';
 export default function Header() {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((state) => !!state.token);
+  const isAdmin = useAuthStore((state) => state.role === 'ADMIN');
   const logout = useAuthStore((state) => state.logout);
   const itemCount = useCartStore((state) => state.itemCount);
 
@@ -81,6 +82,17 @@ export default function Header() {
               </span>
             )}
           </Link>
+
+          {isAdmin && (
+            <>
+              <Link to="/admin/users" className="hover:text-white">
+                회원 관리
+              </Link>
+              <Link to="/admin/chat-rooms" className="hover:text-white">
+                상담 관리
+              </Link>
+            </>
+          )}
 
           {isLoggedIn && (
             <button onClick={logout} className="text-white/50 hover:text-white">
