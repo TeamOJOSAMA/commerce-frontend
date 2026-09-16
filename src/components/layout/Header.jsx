@@ -118,6 +118,6 @@ const NAV_LINKS = [
     label: category.label,
     to: `/products?category=${category.value}`,
   })),
-  { label: '타임세일', to: '/products?status=ON_EVENT' },
+  { label: '할인상품', to: '/products?status=ON_EVENT' },
   { label: '한정쿠폰', to: '/coupons', highlight: true },
 ];

@@ -37,7 +37,7 @@ export default function ProductList() {
   const pageTitle = name
     ? `'${name}' 검색 결과`
     : status === 'ON_EVENT'
-      ? '타임세일'
+      ? '할인상품'
       : categoryLabel;
 
   return (
