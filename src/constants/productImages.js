@@ -9,6 +9,9 @@ const CATEGORY_FOLDERS = {
   BEVERAGE: '음료',
   BEAUTY: '뷰티',
   FOOD: '식품',
+  PET: '반려동물',
+  OFFICE_SUPPLIES: '문구_오피스',
+  BOOKS: '도서',
   OTHER: '기타',
 };
 
@@ -61,6 +64,24 @@ const IMAGE_FILES = {
     '썬그리.png', '장우산.png', '접이식카트.png', '차량용방향제.png', '차량충전기.png',
     '캠핑랜턴.png', '케리어.png', '크로스백.png', '텀블러.png', '휴대용손전등.png',
   ],
+  PET: [
+    '강아지 겨울옷.jpg', '강아지 목줄.jpg', '강아지 사료.jpg', '강아지 수제간식.jpg', '강아지 장난감 세트.jpg',
+    '강아지 하네스.jpg', '고양이 낚싯대 장난감.jpg', '고양이 모래.jpg', '고양이 사료.jpg', '고양이 스크래처.jpg',
+    '고양이 자동 화장실.jpg', '고양이 트릿.jpg', '반려동물 이동장.jpg', '배변패드.jpg', '슬리커 브러시.jpg',
+    '캣타워.avif', '펫 방석.jpg', '펫 자동급식기.jpg', '펫 저자극 샴푸.jpg', '펫 카스트.jpg',
+  ],
+  OFFICE_SUPPLIES: [
+    '3공파일 바인더.jpg', 'A4 복사용지.jpg', '네임펜.jpg', '데스크 정리함.jpg', '마스킹테이프.jpg',
+    '만년필.jpg', '무지노트.jpg', '북마크 세트.jpg', '샤프심.jpg', '수정테이프.jpg',
+    '스테이플러.jpg', '연필 12자루.jpg', '위클리 다이어리.jpg', '자석 화이트보드.jpg', '젤펜 10자루.jpg',
+    '지우개 세트.jpg', '클리어파일.jpg', '탁상용 캘린더.jpg', '포스트잇 세트.jpg', '형광펜 세트.jpg',
+  ],
+  BOOKS: [
+    'IT 개발 입문서.jpg', '경제경영.jpg', '과학 교양서.jpg', '그래픽노블.jpg', '다이어리 플래너북.jpg',
+    '만화책.jpg', '수험서.jpg', '시집.jpg', '심리학 입문서.jpg', '에세이.jpg',
+    '여행 에세이.jpg', '역사 교양서.jpg', '영어회화 교재.jpg', '요리 레시피북.jpg', '이린이 그림책.jpg',
+    '인문학 교양서.jpg', '자기계발.jpg', '자서전.jpg', '재테크 가이드북.jpg', '화제의 소설.jpg',
+  ],
 };
 
 // 파일명이 실제 상품명의 축약형/오타라 부분일치로 못 잇는 것만 예외로 짚어준다.
@@ -80,6 +101,9 @@ const NAME_OVERRIDES = {
   '휴대용손전등': '무선 휴대용 조명',
   '아이쉐도우': '아이섀도 팔레트',
   '과일청베이스': '과일청 에이드베이스',
+  '형광펜 세트': '형광펜 6color 세트',
+  '이린이 그림책': '어린이 그림책 세트',
+  '펫 카스트': '차량용 펫 카시트',
 };
 
 const normalize = (name) => name.replace(/\s+/g, '').toLowerCase();
@@ -90,7 +114,7 @@ function buildIndex() {
   const index = {};
   for (const [category, files] of Object.entries(IMAGE_FILES)) {
     index[category] = files.map((file) => {
-      const base = file.replace(/\.(jpg|jpeg|png)$/i, '');
+      const base = file.replace(/\.(jpg|jpeg|png|avif|webp)$/i, '');
       const productNameHint = NAME_OVERRIDES[base] ?? base;
       return { file, normalized: normalize(productNameHint) };
     });
@@ -100,6 +124,8 @@ function buildIndex() {
 
 // 상품명이 파일명(또는 그 오타 보정본)을 부분 문자열로 포함하면 그 이미지를 쓴다.
 // 예: 파일 "고속 충전기" -> 상품 "고속충전기 65W"에 포함되므로 매칭.
+// 후보가 여럿 걸리면(예: "에세이"와 "여행 에세이"가 둘 다 상품 "여행 에세이"에 포함) 더
+// 구체적인(긴) 이름을 우선한다.
 function findImageInCategory(category, productName) {
   const folder = CATEGORY_FOLDERS[category];
   if (!folder) return null;
@@ -108,10 +134,11 @@ function findImageInCategory(category, productName) {
   const candidates = indexByCategory[category] ?? [];
   const normalizedProductName = normalize(productName);
 
-  const match = candidates.find((candidate) => normalizedProductName.includes(candidate.normalized));
-  if (!match) return null;
+  const matches = candidates.filter((candidate) => normalizedProductName.includes(candidate.normalized));
+  if (matches.length === 0) return null;
 
-  return `/products/${encodeURIComponent(folder)}/${encodeURIComponent(match.file)}`;
+  const best = matches.reduce((a, b) => (b.normalized.length > a.normalized.length ? b : a));
+  return `/products/${encodeURIComponent(folder)}/${encodeURIComponent(best.file)}`;
 }
 
 // 카테고리를 알면(상품 목록/상세) 그 카테고리에서만 찾고, 모르면(장바구니·주문 항목처럼
