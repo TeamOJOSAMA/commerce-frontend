@@ -384,7 +384,7 @@ function RoomList({ title, rooms, activeRoomId, onSelect, bare }) {
   );
 }
 
-function RoomHeader({ title, subtitle, action }) {
+export function RoomHeader({ title, subtitle, action }) {
   return (
     <div className="flex items-center justify-between gap-2 border-b px-5 py-4" style={{ borderColor: 'var(--line)' }}>
       <div className="flex items-center gap-2 min-w-0">
@@ -401,7 +401,7 @@ function RoomHeader({ title, subtitle, action }) {
   );
 }
 
-function MessageBubble({ isMine, senderName, text, time }) {
+export function MessageBubble({ isMine, senderName, text, time }) {
   return (
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex max-w-[75%] flex-col ${isMine ? 'items-end' : 'items-start'}`}>
@@ -437,7 +437,7 @@ function MessageBubble({ isMine, senderName, text, time }) {
   );
 }
 
-function MessageForm({ value, onChange, onSubmit, disabled, placeholder = '메시지를 입력하세요' }) {
+export function MessageForm({ value, onChange, onSubmit, disabled, placeholder = '메시지를 입력하세요' }) {
   return (
     <form onSubmit={onSubmit} className="flex items-center gap-2 border-t p-3" style={{ borderColor: 'var(--line)' }}>
       <input

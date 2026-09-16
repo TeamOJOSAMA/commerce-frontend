@@ -1,52 +1,136 @@
-import { useEffect, useState } from 'react';
-import { getAllChatRooms, updateChatRoomStatus } from '../../api/chat';
+import { useEffect, useRef, useState } from 'react';
+import { getAllChatRooms, getChatMessages, updateChatRoomStatus } from '../../api/chat';
+import { createStompClient, decodeUserId } from '../../lib/chatSocket';
+import { useAuthStore } from '../../store/authStore';
+import { formatInquiryStatus } from '../../constants/inquiryStatus';
 import { formatOrderDate } from '../../constants/orderStatus';
+import { MessageBubble, MessageForm, RoomHeader } from '../Chat';
 
-const STATUS_LABELS = {
-  BOT_HANDLING: '봇 응대중',
-  WAITING: '상담원 대기',
-  IN_PROGRESS: '상담중',
-  COMPLETED: '완료',
-};
-const STATUS_COLORS = {
-  BOT_HANDLING: 'var(--text-muted)',
-  WAITING: 'var(--red)',
-  IN_PROGRESS: 'var(--ink)',
-  COMPLETED: 'var(--text-muted)',
+const STATUS_TABS = [
+  { value: '', label: '전체' },
+  { value: 'BOT_HANDLING', label: '봇 응대중' },
+  { value: 'WAITING', label: '상담원 대기' },
+  { value: 'IN_PROGRESS', label: '상담중' },
+  { value: 'COMPLETED', label: '완료' },
+];
+
+const formatMessageTime = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
 export default function AdminChatRooms() {
-  const [statusFilter, setStatusFilter] = useState('');
-  const [page, setPage] = useState(0);
-  const [roomPage, setRoomPage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [savingRoomId, setSavingRoomId] = useState(null);
+  const token = useAuthStore((state) => state.token);
+  const myUserId = decodeUserId(token);
 
-  const load = () => {
-    setLoading(true);
-    getAllChatRooms(statusFilter, page)
+  const [statusFilter, setStatusFilter] = useState('');
+  const [roomPage, setRoomPage] = useState(null);
+  const [loadingRooms, setLoadingRooms] = useState(true);
+  const [error, setError] = useState('');
+
+  const [activeRoomId, setActiveRoomId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [connected, setConnected] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const bottomRef = useRef(null);
+  const stompClientRef = useRef(null);
+
+  const loadRooms = () => {
+    setLoadingRooms(true);
+    getAllChatRooms(statusFilter)
       .then(setRoomPage)
       .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingRooms(false));
   };
 
   useEffect(() => {
-    load();
-  }, [statusFilter, page]); // eslint-disable-line react-hooks/exhaustive-deps
+    loadRooms();
+  }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // STOMP 연결은 마운트 시 한 번만 맺는다. 고객용 Chat.jsx의 LiveChat과 같은 패턴이다.
+  useEffect(() => {
+    const client = createStompClient(token);
+    stompClientRef.current = client;
+
+    client.onConnect = () => setConnected(true);
+    client.onWebSocketClose = () => setConnected(false);
+    client.activate();
+
+    return () => {
+      client.deactivate();
+      stompClientRef.current = null;
+    };
+  }, [token]);
+
+  // 선택한 방을 구독하고 대화 내역을 불러온다.
+  useEffect(() => {
+    if (!connected || !activeRoomId) return;
+    const client = stompClientRef.current;
+    if (!client) return;
+
+    setMessages([]);
+    getChatMessages(activeRoomId).then((slice) => {
+      setMessages([...(slice?.messages ?? [])].reverse());
+    });
+
+    const messageSub = client.subscribe(`/sub/chat-rooms/${activeRoomId}`, (frame) => {
+      setMessages((prev) => [...prev, JSON.parse(frame.body)]);
+    });
+
+    // 상태가 바뀌면(예: 고객이 상담원 연결을 요청) 목록을 다시 불러와 뱃지/액션을 맞춘다.
+    const statusSub = client.subscribe(`/sub/chat-rooms/${activeRoomId}/status`, () => {
+      loadRooms();
+    });
+
+    const errorSub = client.subscribe(`/sub/chat-rooms/${activeRoomId}/errors`, (frame) => {
+      console.error('채팅 오류:', frame.body);
+    });
+
+    return () => {
+      messageSub.unsubscribe();
+      statusSub.unsubscribe();
+      errorSub.unsubscribe();
+    };
+  }, [connected, activeRoomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const publish = (content) => {
+    if (!connected || !activeRoomId) return;
+    stompClientRef.current.publish({
+      destination: `/pub/chat-rooms/${activeRoomId}/messages`,
+      body: JSON.stringify({ content }),
+    });
+  };
+
+  const handleSend = (event) => {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    publish(text);
+    setDraft('');
+  };
 
   const handleTransition = async (chatRoomId, nextStatus) => {
     setError('');
-    setSavingRoomId(chatRoomId);
+    setActionLoading(true);
     try {
       await updateChatRoomStatus(chatRoomId, nextStatus);
-      load();
+      loadRooms();
     } catch (err) {
       setError(err.message);
     } finally {
-      setSavingRoomId(null);
+      setActionLoading(false);
     }
   };
+
+  const rooms = roomPage?.content ?? [];
+  const activeRoom = rooms.find((room) => room.chatRoomId === activeRoomId);
 
   return (
     <div>
@@ -54,98 +138,135 @@ export default function AdminChatRooms() {
       <p className="mb-4 text-gray-500">총 {roomPage?.totalElements ?? 0}건</p>
 
       <div className="mb-4 flex gap-2">
-        {[{ value: '', label: '전체' }, ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))].map(
-          (tab) => (
-            <button
-              key={tab.value || 'ALL'}
-              onClick={() => {
-                setStatusFilter(tab.value);
-                setPage(0);
-              }}
-              className="rounded-full border px-4 py-1.5 text-sm"
-              style={
-                statusFilter === tab.value
-                  ? { background: 'var(--ink)', color: 'white', borderColor: 'var(--ink)' }
-                  : { borderColor: 'var(--line)' }
-              }
-            >
-              {tab.label}
-            </button>
-          )
-        )}
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value || 'ALL'}
+            onClick={() => setStatusFilter(tab.value)}
+            className="rounded-full border px-4 py-1.5 text-sm"
+            style={
+              statusFilter === tab.value
+                ? { background: 'var(--ink)', color: 'white', borderColor: 'var(--ink)' }
+                : { borderColor: 'var(--line)' }
+            }
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
 
-      {loading ? (
-        <div className="text-gray-400">불러오는 중...</div>
-      ) : !roomPage || roomPage.content.length === 0 ? (
-        <div className="text-gray-400">해당하는 문의가 없습니다.</div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {roomPage.content.map((room) => (
-            <div key={room.chatRoomId} className="clay flex items-center gap-4 p-4">
-              <div className="min-w-0 flex-1">
-                <div className="break-words font-semibold">{room.title}</div>
-                <div className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  고객 {room.customerName} · {formatOrderDate(room.updatedAt)} 업데이트
-                  {room.assigneeName && ` · 담당 ${room.assigneeName}`}
-                </div>
-              </div>
-              <span
-                className="shrink-0 rounded-full px-3 py-1 text-xs font-bold text-white"
-                style={{ background: STATUS_COLORS[room.inquiryStatus] }}
-              >
-                {STATUS_LABELS[room.inquiryStatus] ?? room.inquiryStatus}
-              </span>
-
-              {room.inquiryStatus === 'WAITING' && (
-                <button
-                  onClick={() => handleTransition(room.chatRoomId, 'IN_PROGRESS')}
-                  disabled={savingRoomId === room.chatRoomId}
-                  className="clay-accent shrink-0 px-4 py-2 text-sm disabled:opacity-40"
-                >
-                  내가 담당하기
-                </button>
-              )}
-              {room.inquiryStatus === 'IN_PROGRESS' && (
-                <button
-                  onClick={() => handleTransition(room.chatRoomId, 'COMPLETED')}
-                  disabled={savingRoomId === room.chatRoomId}
-                  className="shrink-0 rounded border px-4 py-2 text-sm hover:border-black disabled:opacity-40"
-                  style={{ borderColor: 'var(--line)' }}
-                >
-                  완료 처리
-                </button>
-              )}
+      <div className="clay flex h-[560px] overflow-hidden">
+        <div className="flex w-72 shrink-0 flex-col overflow-y-auto border-r" style={{ borderColor: 'var(--line)' }}>
+          {loadingRooms ? (
+            <div className="p-4 text-sm text-gray-400">불러오는 중...</div>
+          ) : rooms.length === 0 ? (
+            <div className="p-4 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+              해당하는 문의가 없습니다.
             </div>
-          ))}
+          ) : (
+            rooms.map((room) => {
+              const isActive = room.chatRoomId === activeRoomId;
+              return (
+                <button
+                  key={room.chatRoomId}
+                  onClick={() => setActiveRoomId(room.chatRoomId)}
+                  className="flex w-full flex-col gap-1 border-b px-4 py-3 text-left"
+                  style={{ borderColor: 'var(--line)', background: isActive ? 'var(--paper-2)' : 'transparent' }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="break-words text-sm font-semibold">{room.title}</span>
+                    <span className="shrink-0 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      {formatOrderDate(room.updatedAt)}
+                    </span>
+                  </div>
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    고객 {room.customerName}
+                    {room.assigneeName && ` · 담당 ${room.assigneeName}`}
+                  </div>
+                  <span
+                    className="mt-1 w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                    style={{ background: room.inquiryStatus === 'COMPLETED' ? 'var(--text-muted)' : 'var(--ink)' }}
+                  >
+                    {formatInquiryStatus(room.inquiryStatus)}
+                  </span>
+                </button>
+              );
+            })
+          )}
         </div>
-      )}
 
-      {roomPage && roomPage.totalPages > 1 && (
-        <div className="mt-5 flex justify-center gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="rounded border px-3 py-1.5 text-sm disabled:opacity-40"
-            style={{ borderColor: 'var(--line)' }}
-          >
-            이전
-          </button>
-          <span className="px-2 py-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {page + 1} / {roomPage.totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={!roomPage.hasNext}
-            className="rounded border px-3 py-1.5 text-sm disabled:opacity-40"
-            style={{ borderColor: 'var(--line)' }}
-          >
-            다음
-          </button>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {!activeRoom ? (
+            <div className="flex flex-1 items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
+              왼쪽에서 문의를 선택하세요.
+            </div>
+          ) : (
+            <>
+              <RoomHeader
+                title={activeRoom.title}
+                subtitle={`고객 ${activeRoom.customerName} · ${formatInquiryStatus(activeRoom.inquiryStatus)}${connected ? '' : ' · 연결 중...'}`}
+                action={
+                  activeRoom.inquiryStatus === 'WAITING' ? (
+                    <button
+                      onClick={() => handleTransition(activeRoom.chatRoomId, 'IN_PROGRESS')}
+                      disabled={actionLoading}
+                      className="clay-accent shrink-0 px-4 py-1.5 text-xs disabled:opacity-40"
+                    >
+                      내가 담당하기
+                    </button>
+                  ) : activeRoom.inquiryStatus === 'IN_PROGRESS' ? (
+                    <button
+                      onClick={() => handleTransition(activeRoom.chatRoomId, 'COMPLETED')}
+                      disabled={actionLoading}
+                      className="shrink-0 rounded border px-4 py-1.5 text-xs hover:border-black disabled:opacity-40"
+                      style={{ borderColor: 'var(--line)' }}
+                    >
+                      완료 처리
+                    </button>
+                  ) : null
+                }
+              />
+
+              <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+                {messages.length === 0 && (
+                  <div className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                    대화 내역이 없습니다.
+                  </div>
+                )}
+                {messages.map((message) =>
+                  message.messageType === 'ENTER' || message.messageType === 'LEAVE' ? (
+                    <div
+                      key={message.chatMessageId}
+                      className="text-center text-xs"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {message.content}
+                    </div>
+                  ) : (
+                    <MessageBubble
+                      key={message.chatMessageId}
+                      isMine={message.senderId === myUserId}
+                      senderName={message.senderId === myUserId ? null : message.senderName}
+                      text={message.content}
+                      time={formatMessageTime(message.createdAt)}
+                    />
+                  )
+                )}
+                <div ref={bottomRef} />
+              </div>
+
+              <MessageForm
+                value={draft}
+                onChange={setDraft}
+                onSubmit={handleSend}
+                disabled={!connected || activeRoom.inquiryStatus === 'COMPLETED'}
+                placeholder={activeRoom.inquiryStatus === 'COMPLETED' ? '완료된 문의입니다.' : '메시지를 입력하세요'}
+              />
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
