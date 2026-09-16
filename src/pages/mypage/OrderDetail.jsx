@@ -10,6 +10,11 @@ import { getProductImageUrl } from '../../constants/productImages';
 
 const formatPrice = (price) => `${Number(price).toLocaleString()}원`;
 
+// 백엔드 RefundItem과 같은 규칙: 전량 환불이면 실결제액 그대로, 일부면 실결제액 × 수량 ÷ 주문
+// 수량(원 미만 버림)이다. 서버가 최종 금액을 다시 계산하므로 여기서는 미리보기 용도다.
+const estimateRefundAmount = (item, quantity) =>
+  quantity >= item.quantity ? item.paidAmount : Math.floor((item.paidAmount * quantity) / item.quantity);
+
 export default function OrderDetail() {
   const { orderId } = useParams();
   const isDemo = useAuthStore((state) => state.token === DEMO_TOKEN);
@@ -120,6 +125,22 @@ export default function OrderDetail() {
     return <div className="text-gray-400">불러오는 중...</div>;
   }
 
+  const totalRefundedAmount = order.totalRefundedAmount ?? 0;
+  const refundHistory = order.refundHistory ?? [];
+
+  const estimatedRefundTotal = () => {
+    if (refundType === 'FULL') {
+      return order.items.reduce((sum, item) => {
+        const remaining = item.quantity - (item.refundedQuantity ?? 0);
+        return remaining > 0 ? sum + estimateRefundAmount(item, remaining) : sum;
+      }, 0);
+    }
+    return Object.entries(refundSelections).reduce((sum, [orderItemId, quantity]) => {
+      const item = order.items.find((i) => i.orderItemId === Number(orderItemId));
+      return item ? sum + estimateRefundAmount(item, quantity) : sum;
+    }, 0);
+  };
+
   return (
     <div>
       <Link to="/mypage/orders" className="mb-3 inline-block text-sm hover:text-black" style={{ color: 'var(--text-muted)' }}>
@@ -134,7 +155,10 @@ export default function OrderDetail() {
           className="rounded px-2 py-1 text-xs font-semibold text-white"
           style={{ background: 'var(--ink)' }}
         >
-          {formatOrderStatus(order.displayStatus)}
+          {/* 부분 환불이 여러 번 쌓여 전부 환불된 경우, 서버 진행 상태는 여전히
+              PARTIALLY_REFUNDED로 남지만(전액 환불처럼 주문을 취소하지는 않으므로)
+              화면에서는 "환불 완료"로 보여준다. */}
+          {order.fullyRefunded ? '환불 완료' : formatOrderStatus(order.displayStatus)}
         </span>
       </div>
 
@@ -207,23 +231,49 @@ export default function OrderDetail() {
 
         <div className="clay h-fit p-6">
           <h2 className="mb-4 text-lg font-bold">결제 정보</h2>
+
+          <div className="mb-2 flex justify-between text-sm">
+            <span>총 결제 금액</span>
+            <span>{formatPrice(order.paymentAmount)}</span>
+          </div>
+
+          {totalRefundedAmount > 0 && (
+            <div className="mb-2 flex justify-between text-sm" style={{ color: 'var(--red)' }}>
+              <span>환불된 금액</span>
+              <span>-{formatPrice(totalRefundedAmount)}</span>
+            </div>
+          )}
+
           <div
             className="mb-4 flex items-baseline justify-between border-b pb-4 text-lg font-bold"
             style={{ borderColor: 'var(--line)' }}
           >
-            <span className="text-base font-normal">총 결제 금액</span>
-            <span>{formatPrice(order.paymentAmount)}</span>
+            <span className="text-base font-normal">
+              {totalRefundedAmount > 0 ? '환불 후 결제 금액' : '총 결제 금액'}
+            </span>
+            <span>{formatPrice(order.paymentAmount - totalRefundedAmount)}</span>
           </div>
 
-          {(order.displayStatus === 'REFUNDED' || order.displayStatus === 'PARTIALLY_REFUNDED') &&
-            order.refundReason && (
-              <div className="mb-4 rounded p-3 text-sm" style={{ background: 'var(--paper-2)' }}>
-                <div className="mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
-                  환불 사유
-                </div>
-                <div>{order.refundReason}</div>
+          {refundHistory.length > 0 && (
+            <div className="mb-4 flex flex-col gap-2">
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+                환불 내역 ({refundHistory.length}건)
               </div>
-            )}
+              {refundHistory.map((refund) => (
+                <div key={refund.refundId} className="rounded p-3 text-sm" style={{ background: 'var(--paper-2)' }}>
+                  <div className="flex items-baseline justify-between gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span>
+                      {refund.refundType === 'FULL' ? '전체 환불' : '부분 환불'} · {formatOrderDate(refund.refundedAt)}
+                    </span>
+                    <span className="shrink-0 font-semibold" style={{ color: 'var(--red)' }}>
+                      -{formatPrice(refund.totalRefundAmount)}
+                    </span>
+                  </div>
+                  <div className="mt-1 break-words">{refund.reason}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {order.displayStatus === 'PAYMENT_PENDING' && (
             <button
@@ -235,15 +285,17 @@ export default function OrderDetail() {
             </button>
           )}
 
-          {(order.displayStatus === 'PAID' || order.displayStatus === 'PARTIALLY_REFUNDED') && !showRefundForm && (
-            <button
-              onClick={() => setShowRefundForm(true)}
-              className="w-full rounded border py-2.5 text-sm hover:border-black"
-              style={{ borderColor: 'var(--line)' }}
-            >
-              환불 신청
-            </button>
-          )}
+          {!order.fullyRefunded &&
+            (order.displayStatus === 'PAID' || order.displayStatus === 'PARTIALLY_REFUNDED') &&
+            !showRefundForm && (
+              <button
+                onClick={() => setShowRefundForm(true)}
+                className="w-full rounded border py-2.5 text-sm hover:border-black"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                환불 신청
+              </button>
+            )}
         </div>
       </div>
 
@@ -292,23 +344,36 @@ export default function OrderDetail() {
                       {item.productName} (환불 가능 {remaining}개)
                     </label>
                     {isSelected && (
-                      <input
-                        type="number"
-                        min={1}
-                        max={remaining}
-                        value={selectedQuantity}
-                        onChange={(event) =>
-                          updateRefundQuantity(item.orderItemId, Number(event.target.value), remaining)
-                        }
-                        className="w-16 rounded border px-2 py-1 text-center text-sm"
-                        style={{ borderColor: 'var(--line)' }}
-                      />
+                      <>
+                        <input
+                          type="number"
+                          min={1}
+                          max={remaining}
+                          value={selectedQuantity}
+                          onChange={(event) =>
+                            updateRefundQuantity(item.orderItemId, Number(event.target.value), remaining)
+                          }
+                          className="w-16 rounded border px-2 py-1 text-center text-sm"
+                          style={{ borderColor: 'var(--line)' }}
+                        />
+                        <span className="w-20 shrink-0 text-right font-semibold" style={{ color: 'var(--red)' }}>
+                          {formatPrice(estimateRefundAmount(item, selectedQuantity))}
+                        </span>
+                      </>
                     )}
                   </div>
                 );
               })}
             </div>
           )}
+
+          <div
+            className="mb-3 flex items-center justify-between rounded p-3 text-sm font-semibold"
+            style={{ background: 'var(--paper-2)' }}
+          >
+            <span>환불 예정 금액</span>
+            <span style={{ color: 'var(--red)' }}>{formatPrice(estimatedRefundTotal())}</span>
+          </div>
 
           <textarea
             value={refundReason}
